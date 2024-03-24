@@ -27,8 +27,6 @@ uint64_t num_writes = 0;
 uint64_t num_reads = 0;
 double total = 0;
 
-uint32_t op_tot = 0;
-
 struct array_item {
   uint64_t tag;
   uint64_t lru_pos;
@@ -49,14 +47,8 @@ void clean_cache_item(struct array_item *item) {
   item->dirty = 0;
 }
 
-uint32_t get_set(uint64_t add) { return (add / BLOCK_SZ) % NUM_SETS; }
+uint32_t get_set(uint64_t add) { return ((add / BLOCK_SZ) % NUM_SETS) * ASSOC; }
 uint64_t get_tag(uint64_t add) { return (add / BLOCK_SZ); }
-// uint32_t get_set(uint64_t add) {
-//   return (add >> (int)(log2(BLOCK_SZ))) & ((1 << (int)(log2(NUM_SETS))) - 1);
-// }
-// uint64_t get_tag(uint64_t add) {
-//   return (add >> (int)(log2(BLOCK_SZ)) >> (int)(log2(NUM_SETS)));
-// }
 
 void update_lru(uint64_t add) {
   uint32_t set = get_set(add);
@@ -75,7 +67,6 @@ void add_to_cache(uint64_t add) {
   uint32_t set = get_set(add);
   uint64_t tag = get_tag(add);
   // hold array item to be evicted
-  uint32_t block = 0;
   struct array_item *replacement_candidate =
       calloc(1, sizeof(struct array_item));
   // init lru pos
@@ -91,7 +82,6 @@ void add_to_cache(uint64_t add) {
       replacement_candidate->lru_pos += 1;
     } else {
       replacement_candidate = &((set + i)[array]);
-      block = i;
       break;
     }
   }
@@ -108,7 +98,6 @@ void simulate_access(char op, uint64_t add) {
   uint64_t tag = get_tag(add);
   bool hit_found = 0;
   uint32_t i = 0;
-  struct array_item *update;
   printf("%ld: ", add);
 
   // iterate through set
@@ -116,7 +105,6 @@ void simulate_access(char op, uint64_t add) {
     // printf("set + i: %d\n", set + i);
     hit_found |= (tag == ((set + i)[array]).tag);
     if (hit_found) {
-      update = &((set + i)[array]);
       break;
     }
   }
@@ -135,12 +123,10 @@ void simulate_access(char op, uint64_t add) {
     num_miss += 1;
     // Handle the miss scenario here
     add_to_cache(add);
-    if (op == 'R') {
-      num_reads += 1;
-    }
+    // only increment reads when reading from main memory after miss
+    num_reads += 1;
   }
   if (op == 'W') {
-    op_tot += 1;
     if (!WB) {
       num_writes += 1;
     } else {
@@ -205,13 +191,12 @@ int main(int argc, char **argv) {
     printf("Hits : %.0f\n", num_hit);
     printf("Misses : %.0f\n", num_miss);
     printf("Total %.0f\n", total);
-    printf("%d\n", op_tot);
-    for (int i = 0; i < NUM_SETS; i++) {
-      printf("set #%d\n", i);
-      for (int j = 0; j < ASSOC; j++) {
-        printf("%d tag: %lx\n", j, ((i + j)[array]).tag);
-      }
-    }
+    // for (int i = 0; i < NUM_SETS; i++) {
+    //   printf("set #%d\n", i);
+    //   for (int j = 0; j < ASSOC; j++) {
+    //     printf("%d tag: %lx\n", j, ((i + j)[array]).tag);
+    //   }
+    // }
 #endif
 
     free_array();
