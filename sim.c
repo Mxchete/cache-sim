@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -8,7 +9,7 @@
 
 // this can be turned on if you want to see more information about what the
 // final output of the cache is
-#define MORE_PRINTS
+// #define MORE_PRINTS
 
 // given as const for this assignment
 const uint8_t BLOCK_SZ = 64;
@@ -55,13 +56,12 @@ void update_lru(uint64_t add) {
   uint64_t tag = get_tag(add);
   for (int i = 0; i < ASSOC; i++) {
     if (tag == ((set + i)[array]).tag) {
-      ((set + i)[array]).lru_pos = 0;
+      ((set + i)[array]).lru_pos = 1;
+    } else if (((set + i)[array]).lru_pos != 0) {
+      ((set + i)[array]).lru_pos += 1;
     }
-    ((set + i)[array]).lru_pos += 1;
   }
 }
-
-void update_fifo(uint64_t add) {}
 
 void add_to_cache(uint64_t add) {
   uint32_t set = get_set(add);
@@ -79,7 +79,9 @@ void add_to_cache(uint64_t add) {
     // increment position of all elements after checking them
     // if pos is 0, no cache block at location
     if (pos != 0) {
-      replacement_candidate->lru_pos += 1;
+      // if (tag == 444031)
+      //   printf("replacing: %ld\n", ((set + i)[array]).tag);
+      ((set + i)[array]).lru_pos += 1;
     } else {
       replacement_candidate = &((set + i)[array]);
       break;
@@ -89,6 +91,9 @@ void add_to_cache(uint64_t add) {
     num_writes += 1;
   }
   clean_cache_item(replacement_candidate);
+  assert(replacement_candidate->tag == 0);
+  assert(replacement_candidate->lru_pos == 0);
+  assert(replacement_candidate->dirty == 0);
   replacement_candidate->tag = tag;
   replacement_candidate->lru_pos = 1;
 }
@@ -98,7 +103,7 @@ void simulate_access(char op, uint64_t add) {
   uint64_t tag = get_tag(add);
   bool hit_found = 0;
   uint32_t i = 0;
-  printf("%ld: ", add);
+  // printf("%ld (set %d): ", add, set / 8);
 
   // iterate through set
   for (i = 0; i < ASSOC; i++) {
@@ -108,21 +113,33 @@ void simulate_access(char op, uint64_t add) {
       break;
     }
   }
+  // if (set / 8 == 51) {
+  //   printf("tag: %ld\n", tag);
+  //   for (int it = 0; it < ASSOC; it++) {
+  //     if (((set + it)[array]).tag != 0)
+  //       printf("set %d tag: %ld, lru: %ld\n", set / 8, ((set +
+  //       it)[array]).tag,
+  //              ((set + it)[array]).lru_pos);
+  //   }
+  // }
   if (hit_found) {
-    printf("hit\n");
+    // printf("hit\n");
     num_hit += 1;
     // Choose policy ( LRU or FIFO ) based on the configuration
     if (!REPLACEMENT) {
       update_lru(add);
-    } else {
-      update_fifo(add);
     }
   } else {
     // Cache miss scenario
-    printf("miss\n");
+    // printf("miss (tag %ld)\n", tag);
     num_miss += 1;
     // Handle the miss scenario here
     add_to_cache(add);
+    // printf("After add:\n");
+    // for (int it = 0; it < ASSOC; it++) {
+    //   if (((set + it)[array]).tag != 0)
+    //     printf("set %d tag: %ld\n", set / 8, ((set + it)[array]).tag);
+    // }
     // only increment reads when reading from main memory after miss
     num_reads += 1;
   }
