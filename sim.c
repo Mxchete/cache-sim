@@ -9,6 +9,13 @@
 // final output of the cache is
 // #define MORE_PRINTS
 
+// if you want to see how fast the program executes
+// #define TRACK_TIME
+
+#ifdef TRACK_TIME
+#include <time.h>
+#endif
+
 // given as const for this assignment
 const uint8_t BLOCK_SZ = 64;
 
@@ -123,9 +130,8 @@ void simulate_access(char op, uint64_t add) {
     printf("miss (tag %ld)\n", tag);
 #endif
     num_miss += 1;
-    // Handle the miss scenario here
-    location_ptr = add_to_cache(add);
     num_reads += 1;
+    location_ptr = add_to_cache(add);
   }
   if (op == 'W') {
     if (!WB) {
@@ -137,6 +143,9 @@ void simulate_access(char op, uint64_t add) {
 }
 
 int main(int argc, char **argv) {
+#ifdef TRACK_TIME
+  clock_t begin = clock();
+#endif
   char op;
   char *p;
   uint64_t add;
@@ -175,12 +184,6 @@ int main(int argc, char **argv) {
     printf("Hits : %.0f\n", num_hit);
     printf("Misses : %.0f\n", num_miss);
     printf("Total %.0f\n", total);
-    // for (int i = 0; i < NUM_SETS; i++) {
-    //   printf("set #%d\n", i);
-    //   for (int j = 0; j < ASSOC; j++) {
-    //     printf("%d tag: %lx\n", j, ((i + j)[array]).tag);
-    //   }
-    // }
 #endif
 
     free_array();
@@ -202,5 +205,10 @@ int main(int argc, char **argv) {
     printf("Invalid arguments supplied, the program takes 5 input arguments, "
            "use ./sim -h for argument requirements.\n");
   }
+#ifdef TRACK_TIME
+  clock_t end = clock();
+  double total_exec_time = (double)(end - begin) / CLOCKS_PER_SEC;
+  printf("Total time spent executing program: %f seconds\n", total_exec_time);
+#endif
   return 0;
 }
