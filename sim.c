@@ -1,6 +1,4 @@
 #include <assert.h>
-#include <errno.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -63,67 +61,57 @@ void update_lru(uint64_t add) {
   }
 }
 
-void add_to_cache(uint64_t add) {
+struct array_item *add_to_cache(uint64_t add) {
   uint32_t set = get_set(add);
   uint64_t tag = get_tag(add);
   // hold array item to be evicted
+  uint64_t longest = 0;
   struct array_item *replacement_candidate =
       calloc(1, sizeof(struct array_item));
-  // init lru pos
-  replacement_candidate->lru_pos = 0;
   for (int i = 0; i < ASSOC; i++) {
-    uint64_t pos = ((set + i)[array]).lru_pos;
-    if (pos > replacement_candidate->lru_pos) {
+    if (((set + i)[array]).lru_pos == 0) {
+      replacement_candidate = &((set + i)[array]);
+      break;
+    } else if (((set + i)[array]).lru_pos >= longest) {
+      longest = ((set + i)[array]).lru_pos;
       replacement_candidate = &((set + i)[array]);
     }
     // increment position of all elements after checking them
     // if pos is 0, no cache block at location
-    if (pos != 0) {
-      // if (tag == 444031)
-      //   printf("replacing: %ld\n", ((set + i)[array]).tag);
+    if (longest > 0) {
       ((set + i)[array]).lru_pos += 1;
-    } else {
-      replacement_candidate = &((set + i)[array]);
-      break;
     }
   }
   if (WB && replacement_candidate->dirty) {
     num_writes += 1;
   }
   clean_cache_item(replacement_candidate);
-  assert(replacement_candidate->tag == 0);
-  assert(replacement_candidate->lru_pos == 0);
-  assert(replacement_candidate->dirty == 0);
   replacement_candidate->tag = tag;
   replacement_candidate->lru_pos = 1;
+  return replacement_candidate;
 }
 
 void simulate_access(char op, uint64_t add) {
   uint32_t set = get_set(add);
   uint64_t tag = get_tag(add);
   bool hit_found = 0;
-  uint32_t i = 0;
-  // printf("%ld (set %d): ", add, set / 8);
+  struct array_item *location_ptr = calloc(1, sizeof(struct array_item));
+#ifdef MORE_PRINTS
+  printf("%ld (set %d): ", add, set / 8);
+#endif
 
   // iterate through set
-  for (i = 0; i < ASSOC; i++) {
-    // printf("set + i: %d\n", set + i);
+  for (int i = 0; i < ASSOC; i++) {
     hit_found |= (tag == ((set + i)[array]).tag);
     if (hit_found) {
+      location_ptr = &((set + i)[array]);
       break;
     }
   }
-  // if (set / 8 == 51) {
-  //   printf("tag: %ld\n", tag);
-  //   for (int it = 0; it < ASSOC; it++) {
-  //     if (((set + it)[array]).tag != 0)
-  //       printf("set %d tag: %ld, lru: %ld\n", set / 8, ((set +
-  //       it)[array]).tag,
-  //              ((set + it)[array]).lru_pos);
-  //   }
-  // }
   if (hit_found) {
-    // printf("hit\n");
+#ifdef MORE_PRINTS
+    printf("hit\n");
+#endif
     num_hit += 1;
     // Choose policy ( LRU or FIFO ) based on the configuration
     if (!REPLACEMENT) {
@@ -131,23 +119,19 @@ void simulate_access(char op, uint64_t add) {
     }
   } else {
     // Cache miss scenario
-    // printf("miss (tag %ld)\n", tag);
+#ifdef MORE_PRINTS
+    printf("miss (tag %ld)\n", tag);
+#endif
     num_miss += 1;
     // Handle the miss scenario here
-    add_to_cache(add);
-    // printf("After add:\n");
-    // for (int it = 0; it < ASSOC; it++) {
-    //   if (((set + it)[array]).tag != 0)
-    //     printf("set %d tag: %ld\n", set / 8, ((set + it)[array]).tag);
-    // }
-    // only increment reads when reading from main memory after miss
+    location_ptr = add_to_cache(add);
     num_reads += 1;
   }
   if (op == 'W') {
     if (!WB) {
       num_writes += 1;
     } else {
-      ((set + i)[array]).dirty = 1;
+      location_ptr->dirty = 1;
     }
   }
 }
@@ -158,27 +142,10 @@ int main(int argc, char **argv) {
   uint64_t add;
   switch (argc) {
   case 6:
-    errno = 0;
-    CACHE_SZ = strtol(1 [argv], &p, 10);
-    if (*p != '\0' || errno != 0) {
-      printf(" Error : Could not read integer value for <CACHE_SIZE>.\n");
-      return 1;
-    }
-    ASSOC = strtol(2 [argv], &p, 10);
-    if (*p != '\0' || errno != 0) {
-      printf(" Error : Could not read integer value for <ASSOCIATIVITY>.\n");
-      return 1;
-    }
-    REPLACEMENT = strtol(3 [argv], &p, 10);
-    if (*p != '\0' || errno != 0) {
-      printf(" Error : Could not read integer value for <CACHE_SIZE>.\n");
-      return 1;
-    }
-    WB = strtol(4 [argv], &p, 10);
-    if (*p != '\0' || errno != 0) {
-      printf(" Error : Could not read integer value for <ASSOCIATIVITY>.\n");
-      return 1;
-    }
+    CACHE_SZ = atoi(1 [argv]);
+    ASSOC = atoi(2 [argv]);
+    REPLACEMENT = atoi(3 [argv]);
+    WB = atoi(4 [argv]);
     NUM_SETS = CACHE_SZ / (ASSOC * BLOCK_SZ);
     FILE *file = fopen(5 [argv], "r");
     if (!file) {
