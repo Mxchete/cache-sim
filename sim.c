@@ -1,15 +1,13 @@
-#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// this can be turned on if you want to see more information about what the
-// final output of the cache is
+// mainly used for debugging issues I had with the cache
 // #define MORE_PRINTS
 
-// if you want to see how fast the program executes
+// just for fun
 // #define TRACK_TIME
 
 #ifdef TRACK_TIME
@@ -73,8 +71,7 @@ struct array_item *add_to_cache(uint64_t add) {
   uint64_t tag = get_tag(add);
   // hold array item to be evicted
   uint64_t longest = 0;
-  struct array_item *replacement_candidate =
-      calloc(1, sizeof(struct array_item));
+  struct array_item *replacement_candidate;
   for (int i = 0; i < ASSOC; i++) {
     if (((set + i)[array]).lru_pos == 0) {
       replacement_candidate = &((set + i)[array]);
@@ -102,7 +99,7 @@ void simulate_access(char op, uint64_t add) {
   uint32_t set = get_set(add);
   uint64_t tag = get_tag(add);
   bool hit_found = 0;
-  struct array_item *location_ptr = calloc(1, sizeof(struct array_item));
+  struct array_item *location_ptr;
 #ifdef MORE_PRINTS
   printf("%ld (set %d): ", add, set / 8);
 #endif
