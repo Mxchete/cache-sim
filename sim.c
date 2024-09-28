@@ -148,12 +148,12 @@ int main(int argc, char **argv) {
   uint64_t add;
   switch (argc) {
   case 6:
-    CACHE_SZ = atoi(1 [argv]);
-    ASSOC = atoi(2 [argv]);
-    REPLACEMENT = atoi(3 [argv]);
-    WB = atoi(4 [argv]);
+    CACHE_SZ = atoi(argv[1]);
+    ASSOC = atoi(argv[2]);
+    REPLACEMENT = atoi(argv[3]);
+    WB = atoi(argv[4]);
     NUM_SETS = CACHE_SZ / (ASSOC * BLOCK_SZ);
-    FILE *file = fopen(5 [argv], "r");
+    FILE *file = fopen(argv[5], "r");
     if (!file) {
       printf(" Error : Could not open the trace file.\n");
       return 1;
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     break;
 
   case 2:
-    if (strcmp(1 [argv], "-h") == 0) {
+    if (strcmp(argv[1], "-h") == 0) {
       printf("Program usage guidelines:\n./sim <CACHE_SIZE> <ASSOC> "
              "<REPLACEMENT> <WB> <TRACE_FILE>\nWhere:\n<CACHE_SIZE> is the "
              "size of the simulated cache in bytes,\n<ASSOC> is the "
