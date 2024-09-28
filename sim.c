@@ -58,10 +58,10 @@ void update_lru(uint64_t add) {
   uint32_t set = get_set(add);
   uint64_t tag = get_tag(add);
   for (int i = 0; i < ASSOC; i++) {
-    if (tag == ((set + i)[array]).tag) {
-      ((set + i)[array]).lru_pos = 1;
-    } else if (((set + i)[array]).lru_pos != 0) {
-      ((set + i)[array]).lru_pos += 1;
+    if (tag == array[set + i].tag) {
+      array[set + i].lru_pos = 1;
+    } else if (array[set + i].lru_pos != 0) {
+      array[set + i].lru_pos += 1;
     }
   }
 }
@@ -73,17 +73,17 @@ struct array_item *add_to_cache(uint64_t add) {
   uint64_t longest = 0;
   struct array_item *replacement_candidate;
   for (int i = 0; i < ASSOC; i++) {
-    if (((set + i)[array]).lru_pos == 0) {
-      replacement_candidate = &((set + i)[array]);
+    if (array[set + i].lru_pos == 0) {
+      replacement_candidate = &array[set + i];
       break;
-    } else if (((set + i)[array]).lru_pos >= longest) {
-      longest = ((set + i)[array]).lru_pos;
-      replacement_candidate = &((set + i)[array]);
+    } else if (array[set + i].lru_pos >= longest) {
+      longest = array[set + i].lru_pos;
+      replacement_candidate = &array[set + i];
     }
     // increment position of all elements after checking them
     // if pos is 0, no cache block at location
     if (longest > 0) {
-      ((set + i)[array]).lru_pos += 1;
+      array[set + i].lru_pos += 1;
     }
   }
   if (WB && replacement_candidate->dirty) {
@@ -106,9 +106,9 @@ void simulate_access(char op, uint64_t add) {
 
   // iterate through set
   for (int i = 0; i < ASSOC; i++) {
-    hit_found |= (tag == ((set + i)[array]).tag);
+    hit_found |= (tag == array[set + i].tag);
     if (hit_found) {
-      location_ptr = &((set + i)[array]);
+      location_ptr = &array[set + i];
       break;
     }
   }
